@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda Online</title>
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+    <!-- Barra de navegación -->
+    <header>
+        <nav>
+            <ul>
+                <li><a href="/index">Inicio</a></li>
+                <li><a href="/carrito">Carrito de Compras</a></li>
+                <li><a href="/perfil">Perfil de Usuario</a></li>
+                <li id="admin-link" style="display: none;"><a href="/admin">Administrador de Productos</a></li>
+                <li id="auth-link"><a href="/login">Iniciar Sesión</a></li>
+                <li id="logout-link" style="display: none;"><a href="#" onclick="logout()">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main>
+        <h1>Bienvenido a la Tienda Online</h1>
+        <p>Explora nuestros productos y realiza tus compras.</p>
+        <!-- Aquí se listarán los productos -->
+        <section id="product-list">
+            <h2>Productos Disponibles</h2>
+            <div class="product-list">
+                <!-- Los productos se cargarán dinámicamente -->
+            </div>
+        </section>
+        <section id="purchase-history">
+            <h2>Compras hechas</h2>
+            <div id="purchase-history">
+                <!-- Las compras se agregarán aquí dinámicamente -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Tienda Online</p>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script>
+        // En main.js
+        function displayPurchaseHistory(purchases) {
+            const historyContainer = document.getElementById("purchase-history");
+            historyContainer.innerHTML = "";
+        
+            purchases.forEach(purchase => {
+                const purchaseDiv = document.createElement("div");
+                purchaseDiv.classList.add("purchase-item");
+        
+                purchaseDiv.innerHTML = `
+                    <h4>Compra ID: ${purchase.id}</h4>
+                    <p>Total: $${purchase.total.toFixed(2)}</p>
+                    <p>Fecha: ${new Date(purchase.date).toLocaleDateString()}</p>
+                    <button onclick="downloadInvoice(${purchase.id})">Ver Factura</button>
+                `;
+        
+                historyContainer.appendChild(purchaseDiv);
+            });
+        }
+        </script>
+</body>
+</html>
