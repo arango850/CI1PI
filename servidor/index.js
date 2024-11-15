@@ -7,7 +7,7 @@ const bycrypt =require('bcrypt')
 const jwt = require('jsonwebtoken')
 const { verifyToken, verifyAdmin } = require('./authMiddleware');
 const { readJSON, writeJSON } = require('./db')
-
+const bcrypt= require('bcrypt')
 const app=express();
 const PORT=3000;
 
@@ -21,6 +21,10 @@ app.use(bodyParser.json())
 
 app.get('/',(req,res)=>{
     res.sendFile(path.join(__dirname, '../cliente/views/index.html'));
+})
+
+app.get('/register',(req,res)=>{
+    res.sendFile(path.join(__dirname,'../cliente/views/register.html' ))
 })
 
 app.get('/carrito', (req, res) => {
@@ -51,47 +55,102 @@ app.listen(PORT, ()=>{
     console.log(`Servidor escuchando en http://localhost:${PORT}`)
 })
 
-app.post('/registro', async (req, res) => {
-    const { nombre, email, contrasena, rol } = req.body;
+console.log('DB:', db);  // Esto debería mostrar un objeto si `db` está correctamente definido
 
-    if (!nombre || !email || !contrasena || !rol) {
+
+app.post('/registro', async (req, res) => {
+    const { nombre, email, contrasena } = req.body;
+    const rol = req.body.rol || 'cliente';  // Asigna "cliente" como valor predeterminado para rol
+
+    if (!nombre || !email || !contrasena) {
         return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
 
     try {
+        // Función para verificar si el correo ya existe en la base de datos
+        const verificarCorreo = () => {
+            return new Promise((resolve, reject) => {
+                const checkQuery = `SELECT email FROM usuarios WHERE email = ?`;
+                db.db.get(checkQuery, [email], (err, row) => {
+                    if (err) {
+                        console.error('Error verificando el correo:', err.message);
+                        reject(new Error('Error al verificar el correo'));
+                    } else if (row) {
+                        reject(new Error('El correo ya está registrado'));
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        };
+
+        // Espera la verificación antes de proceder
+        await verificarCorreo();
+
+        // Si el correo no existe, procede con el registro
         const hashedPassword = await bcrypt.hash(contrasena, 10);
         const query = `INSERT INTO usuarios (nombre, email, contrasena, rol) VALUES (?, ?, ?, ?)`;
-        db.run(query, [nombre, email, hashedPassword, rol], function (err) {
+        
+        db.db.run(query, [nombre, email, hashedPassword, rol], function (err) {
             if (err) {
                 console.error('Error al registrar el usuario:', err.message);
                 return res.status(500).json({ message: 'Error al registrar el usuario' });
             }
             res.status(201).json({ message: 'Usuario registrado exitosamente', usuario_id: this.lastID });
         });
+
     } catch (err) {
-        console.error('Error encriptando la contraseña:', err.message);
-        res.status(500).json({ message: 'Error interno del servidor' });
+        // Envía una respuesta con el mensaje del error, ya sea por correo duplicado o error de conexión
+        res.status(400).json({ message: err.message });
     }
 });
+
+
+// Define un secreto para tu JWT
+const JWT_SECRET = 'tu-secreto-aqui'; // Asegúrate de usar un secreto fuerte y único
+
+function generateJWT(user) {
+    // Incluye los datos del usuario que quieras en el payload
+    const payload = { id: user.id, email: user.email, rol: user.rol };
+    const options = { expiresIn: '1h' }; // El token expirará en 1 hora
+
+    // Genera el JWT
+    return jwt.sign(payload, JWT_SECRET, options);
+}
+
 
 app.post('/login', (req, res) => {
     const { email, contrasena } = req.body;
 
-    const query = `SELECT * FROM usuarios WHERE email = ?`;
-    db.get(query, [email], async (err, user) => {
-        if (err || !user) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
+    const query = `SELECT contrasena, rol FROM usuarios WHERE email = ?`;
+    db.db.get(query, [email], async (err, row) => {
+        if (err) {
+            console.error('Error al obtener el usuario:', err.message);
+            return res.status(500).json({ message: 'Error al procesar la solicitud' });
         }
 
-        const validPassword = await bcrypt.compare(contrasena, user.contrasena);
-        if (!validPassword) {
-            return res.status(401).json({ message: 'Contraseña incorrecta' });
+        if (!row) {
+            // Si no existe un usuario con ese correo, devuelve un error de autenticación
+            return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
         }
 
-        const token = jwt.sign({ userId: user.id, rol: user.rol }, 'CLAVE', { expiresIn: '1h' });
-        res.status(200).json({ token });
+        try {
+            // Verifica que el hash de la base de datos no esté indefinido
+            const isPasswordCorrect = await bcrypt.compare(contrasena, row.contrasena);
+            if (!isPasswordCorrect) {
+                return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+            }
+
+            // Si la contraseña es correcta, puedes proceder con el flujo de autenticación
+            const token = generateJWT({ email, rol: row.rol });
+            res.status(200).json({ message: 'Inicio de sesión exitoso', token });
+        } catch (error) {
+            console.error('Error al comparar la contraseña:', error.message);
+            res.status(500).json({ message: 'Error al procesar la solicitud' });
+        }
     });
 });
+
 
 app.get('/productos', (req, res) => {
     const query = `SELECT * FROM productos`;

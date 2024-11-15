@@ -14,26 +14,18 @@ function logout() {
     window.location.href = "/login";
 }
 
-document.getElementById("login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+// Seleccionamos el formulario de registro
+const registerForm = document.getElementById("registerForm");
 
-    const email = document.getElementById("login-email").value;
-    const password = document.getElementById("login-password").value;
+// Añadimos un event listener para el envío del formulario de registro
+if (registerForm) {
+    registerForm.addEventListener("submit", async (event) => {
+        event.preventDefault(); // Previene el envío automático del formulario
 
-    const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, contrasena: password })
+        // Llamada a la función registerUser
+        await registerUser();
     });
-
-    if (response.ok) {
-        const data = await response.json();
-        saveToken(data.token);
-        window.location.href = "/index";
-    } else {
-        alert('Error al iniciar sesión');
-    }
-});
+}
 
 async function loadProducts() {
     const response = await fetch(`${API_URL}/productos`);
@@ -55,29 +47,40 @@ async function loadProducts() {
     });
 }
 
-document.getElementById("form-agregar-producto").addEventListener("submit", async (e) => {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar si el formulario de agregar producto está presente
+    const formAgregarProducto = document.getElementById("form-agregar-producto");
+    if (formAgregarProducto) {
+        formAgregarProducto.addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    const nombre = document.getElementById("nombre").value;
-    const descripcion = document.getElementById("descripcion").value;
-    const precio = document.getElementById("precio").value;
-    const cantidad = document.getElementById("cantidad").value;
+            const nombre = document.getElementById("nombre").value;
+            const descripcion = document.getElementById("descripcion").value;
+            const precio = document.getElementById("precio").value;
+            const cantidad = document.getElementById("cantidad").value;
 
-    const token = getToken();
-    const response = await fetch(`${API_URL}/productos`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ nombre, descripcion, precio, cantidad })
-    });
+            const token = getToken();
+            try {
+                const response = await fetch(`${API_URL}/productos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nombre, descripcion, precio, cantidad })
+                });
 
-    if (response.ok) {
-        alert("Producto agregado exitosamente");
-        loadProducts();
-    } else {
-        alert("Error al agregar el producto");
+                if (response.ok) {
+                    alert("Producto agregado exitosamente");
+                    loadProducts();
+                } else {
+                    alert("Error al agregar el producto");
+                }
+            } catch (error) {
+                console.error("Error en la solicitud:", error);
+                alert("Error en la conexión al servidor");
+            }
+        });
     }
 });
 
@@ -116,17 +119,139 @@ async function checkout() {
 
 document.addEventListener("DOMContentLoaded", () => {
     const token = getToken();
+
+    const authLink = document.getElementById("auth-link");
+    const logoutLink = document.getElementById("logout-link");
+    const adminLink = document.getElementById("admin-link");
+
     if (token) {
-        document.getElementById("auth-link").style.display = "none";
-        document.getElementById("logout-link").style.display = "block";
+        if (authLink) authLink.style.display = "none";
+        if (logoutLink) logoutLink.style.display = "block";
+        
         // Verificar si el usuario es administrador
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.rol === "admin") {
-            document.getElementById("admin-link").style.display = "block";
+        if (payload.rol === "admin" && adminLink) {
+            adminLink.style.display = "block";
         }
     } else {
-        document.getElementById("auth-link").style.display = "block";
-        document.getElementById("logout-link").style.display = "none";
+        if (authLink) authLink.style.display = "block";
+        if (logoutLink) logoutLink.style.display = "none";
     }
 });
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejo de registro en register.html
+    const registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+        registerForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            registerUser();
+        });
+    }
+
+    // Manejo de inicio de sesión en login.html
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+        loginForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            loginUser();
+        });
+    }
+});
+
+async function registerUser() {
+    const nombre = document.getElementById("username").value;
+    const email = document.getElementById("email").value;
+    const contrasena = document.getElementById("password").value;
+    const rol = "cliente"
+    try {
+        const response = await fetch('/registro', { // Cambiar si el puerto o dominio es diferente
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, contrasena })
+        });
+
+        const messageElement = document.getElementById('message');
+        if (messageElement) {
+            if (!response.ok) {
+                const errorData = await response.json();
+                messageElement.textContent = errorData.message || 'Error en el registro';
+                return;
+            }
+
+            const data = await response.json();
+            messageElement.textContent = 'Registro exitoso';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        const messageElement = document.getElementById('message');
+        if (messageElement) {
+            messageElement.textContent = 'Error de red, intenta de nuevo más tarde';
+        }
+    }
+}
+
+
+
+
+// Función de inicio de sesión
+async function loginUser() {
+    const email = document.getElementById("email").value;
+    const constrasena = document.getElementById("password").value;
+
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, constrasena })
+        });
+
+        const messageElement = document.getElementById('message');
+        if (!response.ok) {
+            const errorData = await response.json();
+            messageElement.textContent = errorData.message || 'Error en el inicio de sesión';
+            return;
+        }
+
+        const data = await response.json();
+        messageElement.textContent = 'Inicio de sesión exitoso';
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('message').textContent = 'Error de red, intenta de nuevo más tarde';
+    }
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, contrasena: password })
+        });
+
+        const loginMessage = document.getElementById("loginMessage");
+        if (!response.ok) {
+            const errorData = await response.json();
+            loginMessage.textContent = errorData.message || 'Error en el inicio de sesión';
+            return;
+        }
+
+        const data = await response.json();
+        loginMessage.textContent = 'Inicio de sesión exitoso';
+        // Aquí podrías almacenar el token o redirigir al usuario según lo que necesite la app
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById("loginMessage").textContent = 'Error de red, intenta de nuevo más tarde';
+    }
+});
+
+
 
