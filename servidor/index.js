@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken')
 const { verifyToken, verifyAdmin } = require('./authMiddleware');
 const { readJSON, writeJSON } = require('./db')
 const bcrypt= require('bcrypt')
+const initializeAdmin = require('./utils/initializeAdmin')
 const app=express();
 const PORT=3000;
 
@@ -19,8 +20,14 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json())
 
+initializeAdmin(db.db);
+
 app.get('/',(req,res)=>{
     res.sendFile(path.join(__dirname, '../cliente/views/index.html'));
+})
+
+app.get('/adminHome',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/adminHome.html'));
 })
 
 app.get('/register',(req,res)=>{
@@ -120,36 +127,38 @@ function generateJWT(user) {
 
 
 app.post('/login', (req, res) => {
-    const { email, contrasena } = req.body;
+    const { email, contrasena, rol } = req.body;
 
-    const query = `SELECT contrasena, rol FROM usuarios WHERE email = ?`;
-    db.db.get(query, [email], async (err, row) => {
+    if (!rol || (rol !== 'cliente' && rol !== 'admin')) {
+        return res.status(400).json({ message: 'Rol inválido' });
+    }
+
+    const query = `SELECT * FROM usuarios WHERE email = ? AND rol = ?`;
+    db.db.get(query, [email, rol], async (err, row) => {
         if (err) {
             console.error('Error al obtener el usuario:', err.message);
-            return res.status(500).json({ message: 'Error al procesar la solicitud' });
+            return res.status(500).json({ message: 'Error al obtener el usuario' });
         }
 
         if (!row) {
-            // Si no existe un usuario con ese correo, devuelve un error de autenticación
-            return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+            return res.status(400).json({ message: 'Usuario no encontrado o rol incorrecto' });
         }
 
         try {
-            // Verifica que el hash de la base de datos no esté indefinido
-            const isPasswordCorrect = await bcrypt.compare(contrasena, row.contrasena);
-            if (!isPasswordCorrect) {
-                return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+            const passwordMatch = await bcrypt.compare(contrasena, row.contrasena);
+            if (!passwordMatch) {
+                return res.status(400).json({ message: 'Contraseña incorrecta' });
             }
 
-            // Si la contraseña es correcta, puedes proceder con el flujo de autenticación
-            const token = generateJWT({ email, rol: row.rol });
-            res.status(200).json({ message: 'Inicio de sesión exitoso', token });
+            const token = generateJWT(row);
+            res.json({ message: 'Inicio de sesión exitoso', token });
         } catch (error) {
             console.error('Error al comparar la contraseña:', error.message);
-            res.status(500).json({ message: 'Error al procesar la solicitud' });
+            res.status(500).json({ message: 'Error al comparar la contraseña' });
         }
     });
 });
+
 
 
 app.get('/productos', (req, res) => {
@@ -219,6 +228,37 @@ app.get('/compras', verifyToken, (req, res) => {
         res.status(200).json(rows);
     });
 });
+
+app.get('/admin', authMiddleware, (req, res) => {
+    if (req.user.rol !== 'administrador') {
+        return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+});
+
+app.get('/perfil', authMiddleware, (req, res) => {
+    if (req.user.rol !== 'cliente') {
+        return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    res.sendFile(path.join(__dirname, 'views', 'perfil.html'));
+});
+
+function authMiddleware(req, res, next) {
+    const token = req.headers['authorization'];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Token no proporcionado' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(403).json({ message: 'Token inválido' });
+    }
+}
+
 
 
 

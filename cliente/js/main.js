@@ -222,36 +222,35 @@ async function loginUser() {
     }
 }
 
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
+document.getElementById('loginForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    const email = document.getElementById('email').value;
+    const contrasena = document.getElementById('password').value;
+    const rol = document.getElementById('rol').value;
 
-    try {
-        const response = await fetch('/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, contrasena: password })
-        });
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, contrasena, rol })
+    });
 
-        const loginMessage = document.getElementById("loginMessage");
-        if (!response.ok) {
-            const errorData = await response.json();
-            loginMessage.textContent = errorData.message || 'Error en el inicio de sesión';
-            return;
+    const result = await response.json();
+
+    if (response.ok) {
+        // Redirige según el rol
+        if (rol === 'admin') {
+            window.location.href = '/adminHome';
+        } else {
+            window.location.href = '/perfil';
         }
-
-        const data = await response.json();
-        loginMessage.textContent = 'Inicio de sesión exitoso';
-        // Aquí podrías almacenar el token o redirigir al usuario según lo que necesite la app
-    } catch (error) {
-        console.error('Error:', error);
-        document.getElementById("loginMessage").textContent = 'Error de red, intenta de nuevo más tarde';
+    } else {
+        alert(result.message);
     }
 });
+
 
 
 
