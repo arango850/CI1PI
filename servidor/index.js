@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, '../cliente')));
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json())
+app.use(express.urlencoded({ extended: true }));
 
 initializeAdmin(db.db);
 
@@ -30,8 +31,36 @@ app.get('/adminHome',(req,res)=>{
     res.sendFile(path.join(__dirname, '../cliente/views/adminHome.html'));
 })
 
+app.get('/productosCliente',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/productosCliente.html'));
+})
+
+app.get('/carritoCliente',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/carritoCliente.html'));
+})
+
+app.get('/historialCompras',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/historialCompras.html'));
+})
+
+app.get('/realizarCompra',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/realizarCompra.html'));
+})
+
+app.get('/clienteHome',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/clienteHome.html'));
+})
+
+app.get('/logout',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/index.html'));
+})
+
 app.get('/register',(req,res)=>{
     res.sendFile(path.join(__dirname,'../cliente/views/register.html' ))
+})
+
+app.get('/admin_productos',(req,res)=>{
+    res.sendFile(path.join(__dirname, '../cliente/views/gestionProductos.html'));
 })
 
 app.get('/carrito', (req, res) => {
@@ -84,9 +113,7 @@ app.post('/registro', async (req, res) => {
                         reject(new Error('Error al verificar el correo'));
                     } else if (row) {
                         reject(new Error('El correo ya está registrado'));
-                    } else {
-                        resolve();
-                    }
+                    } 
                 });
             });
         };
@@ -163,7 +190,7 @@ app.post('/login', (req, res) => {
 
 app.get('/productos', (req, res) => {
     const query = `SELECT * FROM productos`;
-    db.all(query, [], (err, rows) => {
+    db.db.all(query, [], (err, rows) => {
         if (err) {
             console.error("Error al obtener los productos:", err.message);
             return res.status(500).json({ message: 'Error al obtener productos' });
@@ -172,14 +199,15 @@ app.get('/productos', (req, res) => {
     });
 });
 
-app.post('/productos', verifyToken, verifyAdmin, (req, res) => {
+app.post('/productos', (req, res) => {
+    console.log('Datos recibidos en req.body:', req.body);
     const { nombre, descripcion, precio, cantidad } = req.body;
-    if (!nombre || !descripcion || !precio || !cantidad) {
+    if (!nombre || !precio || !cantidad) {
         return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
 
     const query = `INSERT INTO productos (nombre, descripcion, precio, cantidad) VALUES (?, ?, ?, ?)`;
-    db.run(query, [nombre, descripcion, precio, cantidad], function (err) {
+    db.db.run(query, [nombre, descripcion, precio, cantidad], function (err) {
         if (err) {
             console.error('Error al agregar el producto:', err.message);
             return res.status(500).json({ message: 'Error al agregar el producto' });
@@ -187,6 +215,29 @@ app.post('/productos', verifyToken, verifyAdmin, (req, res) => {
         res.status(201).json({ message: 'Producto agregado exitosamente', producto_id: this.lastID });
     });
 });
+
+app.put('/productos/:id', (req, res)=>{
+    const { id } = req.params
+    const { nombre, descripcion, precio, cantidad} = req.body
+    const query = 'UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, cantidad = ?'
+    db.db.run(query, [nombre,descripcion,precio,cantidad],function(err){
+        if(err){
+            return res.status(500).json({error: 'Error al actualizar producto'})
+        }
+        res.json({ message: 'Producto Actualizado'})
+    })
+})
+
+app.delete('productos/:id',(req,res)=>{
+    const { id } = req.params
+    const query = 'DELETE FROM productos WHERE id = ?'
+    db.db.run(query, [id], function(err){
+        if(err){
+            return res.status(500).json({ error: 'Error al eliminar producto'})
+        }
+        res.json({ message: 'Producto eliminado'})
+    })
+})
 
 app.post('/compras', verifyToken, (req, res) => {
     const { productos, total } = req.body;

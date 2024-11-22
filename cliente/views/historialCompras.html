@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/styles.css">
+    <title>Historial de Compras</title>
+</head>
+<body>
+    <header>
+        <h1>Historial de Compras</h1>
+    </header>
+    <section id="back-button">
+        <button onclick="window.location.href='/clienteHome'">Volver</button>
+    </section>
+    <section id="historial">
+        <ul id="historial-lista">
+            <!-- El historial de compras será cargado aquí -->
+        </ul>
+    </section>
+    <script src="../js/main.js"></script>
+</body>
+</html>
+
+<script>
+async function cargarHistorial() {
+    const response = await fetch('/historial');
+    const historial = await response.json();
+
+    const historialLista = document.getElementById('historial-lista');
+    historialLista.innerHTML = ''; // Limpiar historial
+
+    historial.forEach(compra => {
+        const li = document.createElement('li');
+        li.textContent = `Compra ID: ${compra.id}, Total: $${compra.total}`;
+        historialLista.appendChild(li);
+    });
+}
+
+cargarHistorial();
+</script>
+

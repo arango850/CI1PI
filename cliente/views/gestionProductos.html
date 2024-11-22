@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/styles.css">
+    <title>Gestión de Productos</title>
+</head>
+<body>
+    <h1>Gestión de Productos</h1>
+    <section id="product-form">
+        <h2>Añadir Producto</h2>
+        <form id="add-product-form">
+            <input type="text" id="nombre" name="nombre" placeholder="Nombre" required>
+            <textarea id="descripcion" name="descripcion" placeholder="Descripción"></textarea>
+            <input type="number" id="precio" name="precio" placeholder="Precio" required>
+            <input type="number" id="cantidad" name="cantidad" placeholder="cantidad" required>
+            <button type="submit">Añadir Producto</button>
+        </form>
+    </section>
+    <section id="back-button">
+        <button onclick="window.location.href='/adminHome'">Volver a Administración</button>
+    </section>
+    <section id="product-list">
+        <h2>Lista de Productos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Precio</th>
+                    <th>cantidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="productos-body">
+                
+            </tbody>
+        </table>
+    </section>
+    <div id="message"></div>
+    <script src="/js/main.js"></script>
+</body>
+</html>

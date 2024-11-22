@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/styles.css">
+    <title>Productos Disponibles</title>
+</head>
+<body>
+    <header>
+        <h1>Productos Disponibles</h1>
+    </header>
+    <section id="back-button">
+        <button onclick="window.location.href='/clienteHome'">Volver</button>
+    </section>
+    <section id="productos-lista">
+        <ul id="productos-list">
+            <!-- Los productos disponibles serán cargados aquí -->
+        </ul>
+    </section>
+    <button id="view-cart-button">Ver Carrito</button>
+    <script src="../js/main.js"></script>
+</body>
+</html>
+<script>
+    async function cargarProductos() {
+        const response = await fetch('/productos');
+        const productos = await response.json();
+    
+        const productosList = document.getElementById('productos-list');
+        productosList.innerHTML = ''; // Limpiar la lista
+    
+        productos.forEach(producto => {
+            const li = document.createElement('li');
+            li.textContent = `${producto.nombre} - $${producto.precio}`;
+            const button = document.createElement('button');
+            button.textContent = 'Añadir al Carrito';
+            button.onclick = () => addProductToCart(producto); // Función que agregar al carrito
+            li.appendChild(button);
+            productosList.appendChild(li);
+        });
+    }
+    
+    function addProductToCart(product) {
+    // Verificar si el producto ya está en el carrito
+    const existingProductIndex = carrito.findIndex(item => item.id === product.id);
+
+    if (existingProductIndex !== -1) {
+        // Si el producto ya está en el carrito, aumentamos la cantidad
+        carrito[existingProductIndex].cantidad += product.cantidad;
+    } else {
+        // Si el producto no está en el carrito, lo agregamos
+        carrito.push(product);
+    }
+
+    saveCart();  // Guardamos el carrito actualizado
+    renderCart();  // Actualizamos la vista del carrito
+    alert('Producto agregado al carrito');
+}
+    
+    cargarProductos();
+    </script>
